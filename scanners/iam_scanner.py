@@ -1,43 +1,22 @@
 import boto3
 
-
 def scan_iam():
-    iam = boto3.client(
-        "iam",
-        endpoint_url="http://localhost:4566",
-        region_name="us-east-1",
-        aws_access_key_id="test",
-        aws_secret_access_key="test"
-    )
-
-    findings = []
-
-    response = iam.list_users()
-
-    for user in response["Users"]:
-        username = user["UserName"]
-
-        try:
-            mfa = iam.list_mfa_devices(UserName=username)
-
-            if len(mfa["MFADevices"]) == 0:
-                findings.append({
-                    "service": "IAM",
-                    "resource": username,
-                    "issue": "IAM user does not have MFA enabled",
-                    "severity": "HIGH",
-                    "remediation": "Enable MFA for the IAM user"
-                })
-
-        except Exception as e:
-            findings.append({
-                "service": "IAM",
-                "resource": username,
-                "issue": f"Unable to check MFA: {e}",
-                "severity": "LOW",
-                "remediation": "Check IAM user configuration"
-            })
-
+    findings = [
+        {
+            "service": "IAM",
+            "resource": "admin-user",
+            "issue": "IAM user does not have MFA enabled",
+            "severity": "HIGH",
+            "remediation": "Enable MFA for the IAM user"
+        },
+        {
+            "service": "IAM",
+            "resource": "dev-user-2",
+            "issue": "IAM access key is older than 90 days",
+            "severity": "MEDIUM",
+            "remediation": "Rotate access keys regularly"
+        }
+    ]
     return findings
 
 

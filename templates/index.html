@@ -11,7 +11,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 
@@ -23,7 +23,7 @@
     <!-- HEADER -->
 
     <header>
-
+        <button id="themeToggle" onclick="toggleTheme()" class="theme-btn">🌙 Dark Mode</button>
         <h1>
             Cloud Security Misconfiguration Detector
         </h1>
@@ -40,10 +40,12 @@
     <section class="scan-section">
 
         <button id="scanButton" onclick="runScan()">
-
             🔍 Run New Security Scan
-
         </button>
+
+        {% if latest_scan %}
+        <a href="/api/report/{{ latest_scan.id }}" class="report-btn" target="_blank">📄 Download PDF Report</a>
+        {% endif %}
 
     </section>
 
@@ -53,7 +55,10 @@
     {% if latest_scan %}
 
     <section class="summary">
-
+        
+        <div class="chart-container">
+            <canvas id="severityChart"></canvas>
+        </div>
 
         <!-- SCORE -->
 
@@ -189,15 +194,13 @@
 
 
             <p>
-
                 <strong>
                     Recommended Fix:
                 </strong>
-
                 {{ finding.remediation }}
-
             </p>
-
+            
+            <button class="fix-btn" onclick="fixIssue(this)">🛠️ Apply Remediation</button>
 
         </div>
 
@@ -233,7 +236,38 @@
 
     {% endif %}
 
-
+    {% if latest_scan %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('severityChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium', 'Low'],
+                    datasets: [{
+                        data: [
+                            {{ latest_scan.findings|selectattr("severity", "equalto", "CRITICAL")|list|length }},
+                            {{ latest_scan.findings|selectattr("severity", "equalto", "HIGH")|list|length }},
+                            {{ latest_scan.findings|selectattr("severity", "equalto", "MEDIUM")|list|length }},
+                            {{ latest_scan.findings|selectattr("severity", "equalto", "LOW")|list|length }}
+                        ],
+                        backgroundColor: ['#dc2626', '#f59e0b', '#3b82f6', '#10b981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: document.body.classList.contains('dark-mode') ? '#fff' : '#333' } }
+                    }
+                }
+            });
+        }
+    });
+    </script>
+    {% endif %}
 
     <!-- SCAN HISTORY -->
 

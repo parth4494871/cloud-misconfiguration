@@ -180,3 +180,75 @@ button:hover {
         grid-template-columns: 1fr;
     }
 }
+
+/* --- NEW FEATURES CSS --- */
+.chart-container {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 250px;
+}
+
+.report-btn {
+    background: #10b981;
+    color: white;
+    text-decoration: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-left: 15px;
+    display: inline-block;
+}
+.report-btn:hover {
+    opacity: 0.9;
+}
+
+.theme-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #4b5563;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.fix-btn {
+    background: #3b82f6;
+    padding: 10px 16px;
+    font-size: 14px;
+    margin-top: 15px;
+    transition: background 0.3s;
+}
+
+/* Dark Mode */
+body.dark-mode {
+    background: #111827;
+    color: #f9fafb;
+}
+body.dark-mode .score-card, 
+body.dark-mode .stat-card, 
+body.dark-mode .findings, 
+body.dark-mode .welcome,
+body.dark-mode .chart-container {
+    background: #1f2937;
+    color: #f9fafb;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+body.dark-mode .finding {
+    border-color: #374151;
+}
+body.dark-mode table, 
+body.dark-mode th, 
+body.dark-mode td {
+    color: #f9fafb;
+}
+body.dark-mode header p {
+    color: #9ca3af;
+}
+body.dark-mode .finding p {
+    color: #d1d5db;
+}

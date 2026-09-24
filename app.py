@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
 from datetime import datetime
 import sqlite3
 import json
@@ -8,8 +8,11 @@ from scanners.iam_scanner import scan_iam
 from scanners.sg_scanner import scan_security_groups
 from scanners.rds_scanner import scan_rds
 from scanners.cloudtrail_scanner import scan_cloudtrail
+from scanners.ec2_scanner import scan_ec2
+from scanners.lambda_scanner import scan_lambda
 from risk_engine import calculate_risk
 from database import init_db, save_scan, get_scan_history
+from report_generator import generate_pdf_report
 
 app = Flask(__name__)
 init_db()
@@ -46,6 +49,12 @@ def start_scan():
 
         cloudtrail_findings = scan_cloudtrail()
         all_findings.extend(cloudtrail_findings)
+        
+        ec2_findings = scan_ec2()
+        all_findings.extend(ec2_findings)
+        
+        lambda_findings = scan_lambda()
+        all_findings.extend(lambda_findings)
         
         # Calculate risk
         score, grade = calculate_risk(all_findings)
@@ -99,6 +108,28 @@ def scan_history():
         scan['findings'] = json.loads(scan['findings'])
     
     return jsonify(history)
+
+@app.route('/api/report/<int:scan_id>', methods=['GET'])
+def download_report(scan_id):
+    """Download PDF report for a scan"""
+    history = get_scan_history()
+    scan = next((s for s in history if s['id'] == scan_id), None)
+    
+    if not scan:
+        return jsonify({'error': 'Scan not found'}), 404
+        
+    scan_data = scan.copy()
+    if isinstance(scan_data['findings'], str):
+        scan_data['findings'] = json.loads(scan_data['findings'])
+        
+    pdf_buffer = generate_pdf_report(scan_data)
+    
+    return send_file(
+        pdf_buffer, 
+        as_attachment=True, 
+        download_name=f"security_report_{scan_id}.pdf", 
+        mimetype="application/pdf"
+    )
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

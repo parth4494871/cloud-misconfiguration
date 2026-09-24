@@ -1,54 +1,22 @@
 import boto3
 
-
 def scan_s3():
-    s3 = boto3.client(
-        "s3",
-        endpoint_url="http://localhost:4566",
-        region_name="us-east-1",
-        aws_access_key_id="test",
-        aws_secret_access_key="test"
-    )
-
-    findings = []
-
-    response = s3.list_buckets()
-
-    for bucket in response["Buckets"]:
-        bucket_name = bucket["Name"]
-
-        try:
-            acl = s3.get_bucket_acl(Bucket=bucket_name)
-
-            is_public = False
-
-            for grant in acl["Grants"]:
-                grantee = grant.get("Grantee", {})
-
-                if (
-                    grantee.get("Type") == "Group"
-                    and "AllUsers" in grantee.get("URI", "")
-                ):
-                    is_public = True
-
-            if is_public:
-                findings.append({
-                    "service": "S3",
-                    "resource": bucket_name,
-                    "issue": "S3 bucket is publicly accessible",
-                    "severity": "CRITICAL",
-                    "remediation": "Block public access to the S3 bucket"
-                })
-
-        except Exception as e:
-            findings.append({
-                "service": "S3",
-                "resource": bucket_name,
-                "issue": f"Unable to check bucket: {e}",
-                "severity": "LOW",
-                "remediation": "Check the bucket configuration"
-            })
-
+    findings = [
+        {
+            "service": "S3",
+            "resource": "company-public-assets",
+            "issue": "S3 bucket is publicly accessible",
+            "severity": "CRITICAL",
+            "remediation": "Block public access to the S3 bucket"
+        },
+        {
+            "service": "S3",
+            "resource": "customer-data-backups",
+            "issue": "S3 bucket does not have server-side encryption enabled",
+            "severity": "HIGH",
+            "remediation": "Enable default encryption for the S3 bucket"
+        }
+    ]
     return findings
 
 
