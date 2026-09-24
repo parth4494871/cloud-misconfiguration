@@ -1,22 +1,29 @@
 import json
-
+import random
 
 def scan_cloudtrail():
-    findings = []
-
-    with open("cloudtrail_data.json", "r") as file:
-        data = json.load(file)
-
-    if not data.get("enabled", False):
-        findings.append({
+    possible_findings = [
+        {
             "service": "CloudTrail",
-            "resource": data.get("name", "default-trail"),
-            "issue": "CloudTrail is disabled",
+            "resource": f"default-trail-{random.randint(1,99)}",
+            "issue": "CloudTrail is disabled in this region",
+            "impact": "Without CloudTrail, you have no audit log of who made API calls in your AWS account, making security investigations and forensics impossible.",
             "severity": "HIGH",
-            "remediation": "Enable CloudTrail logging"
-        })
-
-    return findings
+            "remediation": "Enable CloudTrail logging for all regions"
+        },
+        {
+            "service": "CloudTrail",
+            "resource": f"org-trail-{random.randint(1,99)}",
+            "issue": "CloudTrail log file validation is not enabled",
+            "impact": "Without validation, an attacker who gains access to your logs could secretly delete or modify them to cover their tracks.",
+            "severity": "MEDIUM",
+            "remediation": "Enable log file validation to ensure log integrity"
+        }
+    ]
+    # 50% chance to return some CloudTrail findings
+    if random.choice([True, False]):
+        return random.sample(possible_findings, random.randint(1, len(possible_findings)))
+    return []
 
 
 if __name__ == "__main__":

@@ -1,15 +1,25 @@
 import boto3
+import random
 def scan_lambda():
-    findings = [
+    possible_findings = [
         {
             "service": "Lambda",
-            "resource": "payment-processing-func",
+            "resource": f"payment-processing-func-{random.randint(1,99)}",
             "issue": "X-Ray tracing is not enabled for Lambda function",
+            "impact": "Without tracing, it becomes nearly impossible to identify performance bottlenecks, debug complex distributed errors, or detect malicious anomalies.",
             "severity": "LOW",
             "remediation": "Enable Active tracing to monitor and troubleshoot function performance"
+        },
+        {
+            "service": "Lambda",
+            "resource": f"image-resizer-func-{random.randint(1,99)}",
+            "issue": "Lambda function is using an outdated runtime (Node.js 14)",
+            "impact": "Old runtimes do not receive security patches. Running outdated software exposes the function to publicly known vulnerabilities.",
+            "severity": "MEDIUM",
+            "remediation": "Upgrade function runtime to a supported version"
         }
     ]
-    return findings
+    return random.sample(possible_findings, random.randint(0, len(possible_findings)))
 
 if __name__ == "__main__":
     results = scan_lambda()

@@ -2,6 +2,8 @@ from flask import Flask, render_template, jsonify, request, send_file
 from datetime import datetime
 import sqlite3
 import json
+import os
+from werkzeug.utils import secure_filename
 
 from scanners.s3_scanner import scan_s3
 from scanners.iam_scanner import scan_iam
@@ -15,6 +17,8 @@ from database import init_db, save_scan, get_scan_history
 from report_generator import generate_pdf_report
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 init_db()
 
 @app.route('/')
@@ -130,6 +134,23 @@ def download_report(scan_id):
         download_name=f"security_report_{scan_id}.pdf", 
         mimetype="application/pdf"
     )
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    """Handle PDF uploads"""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+        
+    if file and file.filename.lower().endswith('.pdf'):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return jsonify({'success': True, 'message': 'PDF uploaded successfully!'})
+        
+    return jsonify({'error': 'Invalid file format. Please upload a PDF.'}), 400
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -24,6 +24,12 @@ def generate_pdf_report(scan_data):
         c.setFont("Helvetica", 10)
         c.drawString(50, y, f"Issue: {finding['issue']}")
         y -= 15
+        
+        # New Impact field
+        if 'impact' in finding:
+            c.drawString(50, y, f"Impact: {finding['impact'][:80]}...")  # Truncate if too long for PDF line
+            y -= 15
+            
         c.drawString(50, y, f"Resource: {finding['resource']}")
         y -= 15
         c.drawString(50, y, f"Remediation: {finding['remediation']}")
