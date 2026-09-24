@@ -1,0 +1,9 @@
+{
+    "DBInstances": [
+        {
+            "DBInstanceIdentifier": "college-db",
+            "PubliclyAccessible": true,
+            "StorageEncrypted": false
+        }
+    ]
+}

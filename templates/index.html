@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Cloud Security Detector</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+
+    <!-- HEADER -->
+
+    <header>
+
+        <h1>
+            Cloud Security Misconfiguration Detector
+        </h1>
+
+        <p>
+            Local AWS Security Assessment Dashboard
+        </p>
+
+    </header>
+
+
+    <!-- SCAN BUTTON -->
+
+    <section class="scan-section">
+
+        <button id="scanButton" onclick="runScan()">
+
+            🔍 Run New Security Scan
+
+        </button>
+
+    </section>
+
+
+    <!-- LATEST SCAN -->
+
+    {% if latest_scan %}
+
+    <section class="summary">
+
+
+        <!-- SCORE -->
+
+        <div class="score-card">
+
+            <h2>
+                Risk Score
+            </h2>
+
+            <div class="score">
+
+                {{ latest_scan.score }}/100
+
+            </div>
+
+            <div class="grade">
+
+                Grade {{ latest_scan.grade }}
+
+            </div>
+
+        </div>
+
+
+        <!-- TOTAL FINDINGS -->
+
+        <div class="stat-card">
+
+            <h2>
+                Total Findings
+            </h2>
+
+            <div class="stat">
+
+                {{ latest_scan.findings|length }}
+
+            </div>
+
+        </div>
+
+
+        <!-- CRITICAL -->
+
+        <div class="stat-card critical">
+
+            <h2>
+                Critical
+            </h2>
+
+            <div class="stat">
+
+                {{ latest_scan.findings
+                   |selectattr("severity", "equalto", "CRITICAL")
+                   |list
+                   |length }}
+
+            </div>
+
+        </div>
+
+
+        <!-- HIGH -->
+
+        <div class="stat-card high">
+
+            <h2>
+                High
+            </h2>
+
+            <div class="stat">
+
+                {{ latest_scan.findings
+                   |selectattr("severity", "equalto", "HIGH")
+                   |list
+                   |length }}
+
+            </div>
+
+        </div>
+
+
+    </section>
+
+
+    <!-- SECURITY FINDINGS -->
+
+    <section class="findings">
+
+        <h2>
+            Security Findings
+        </h2>
+
+
+        {% for finding in latest_scan.findings %}
+
+        <div class="finding">
+
+
+            <div class="finding-header">
+
+                <span class="service">
+
+                    {{ finding.service }}
+
+                </span>
+
+
+                <span class="severity {{ finding.severity|lower }}">
+
+                    {{ finding.severity }}
+
+                </span>
+
+            </div>
+
+
+            <h3>
+
+                {{ finding.issue }}
+
+            </h3>
+
+
+            <p>
+
+                <strong>
+                    Resource:
+                </strong>
+
+                {{ finding.resource }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    Recommended Fix:
+                </strong>
+
+                {{ finding.remediation }}
+
+            </p>
+
+
+        </div>
+
+        {% endfor %}
+
+
+    </section>
+
+
+    {% else %}
+
+
+    <!-- WELCOME -->
+
+    <section class="welcome">
+
+        <h2>
+            Welcome to the Security Scanner
+        </h2>
+
+        <p>
+
+            Click
+            <strong>
+                Run New Security Scan
+            </strong>
+            to analyze your local cloud environment for security misconfigurations.
+
+        </p>
+
+    </section>
+
+
+    {% endif %}
+
+
+
+    <!-- SCAN HISTORY -->
+
+    <section class="history">
+
+        <h2>
+            Scan History
+        </h2>
+
+
+        {% if history %}
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Scan ID
+                    </th>
+
+                    <th>
+                        Risk Score
+                    </th>
+
+                    <th>
+                        Grade
+                    </th>
+
+                    <th>
+                        Findings
+                    </th>
+
+                    <th>
+                        Timestamp
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for scan in history %}
+
+                <tr>
+
+                    <td>
+                        {{ scan.id }}
+                    </td>
+
+                    <td>
+                        {{ scan.score }}/100
+                    </td>
+
+                    <td>
+                        {{ scan.grade }}
+                    </td>
+
+                    <td>
+                        {{ scan.findings|length }}
+                    </td>
+
+                    <td>
+                        {{ scan.timestamp }}
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+
+        {% else %}
+
+        <p>
+            No previous scans found.
+        </p>
+
+        {% endif %}
+
+
+    </section>
+
+
+</div>
+
+
+<!-- JAVASCRIPT -->
+
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+
+
+</body>
+
+</html>
