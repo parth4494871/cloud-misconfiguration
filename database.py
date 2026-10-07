@@ -33,8 +33,6 @@ def init_db():
     cursor = conn.cursor()
 
     # --- Users table ---
-    # Stores registered users with hashed passwords and roles.
-    # role can be: 'admin', 'auditor', or 'user'
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,8 +45,6 @@ def init_db():
     """)
 
     # --- Scans table ---
-    # Stores each scan's results: score, grade, and the full findings as JSON.
-    # user_id links the scan to the user who ran it.
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS scans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,7 +100,7 @@ def get_user_by_id(user_id):
 
 # --- Scan Functions ---
 
-def save_scan(findings, score, grade, user_id=None, aws_endpoint=None):
+def save_scan(score, grade, findings, user_id=None, aws_endpoint=None):
     """Save a scan result to the database. Returns the scan ID."""
     conn = get_db()
     cursor = conn.cursor()
@@ -120,24 +116,40 @@ def save_scan(findings, score, grade, user_id=None, aws_endpoint=None):
     return scan_id
 
 
-def get_scan_history(user_id=None):
+def get_scan_history(user_id=None, limit=None):
     """
-    Get all past scans, newest first.
+    Get past scans, newest first.
     If user_id is given, only return that user's scans.
+    If limit is given, restrict total returned rows.
     """
     conn = get_db()
     cursor = conn.cursor()
 
-    if user_id:
-        cursor.execute(
-            "SELECT * FROM scans WHERE user_id = ? ORDER BY id DESC", (user_id,)
-        )
-    else:
-        cursor.execute("SELECT * FROM scans ORDER BY id DESC")
+    query = "SELECT * FROM scans"
+    params = []
 
+    if user_id:
+        query += " WHERE user_id = ?"
+        params.append(user_id)
+
+    query += " ORDER BY id DESC"
+
+    if limit is not None:
+        query += " LIMIT ?"
+        params.append(limit)
+
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+
+    result = []
+    for row in rows:
+        item = dict(row)
+        item['created_at'] = item.get('timestamp') or item.get('created_at')
+        item['findings_json'] = item.get('findings', '[]')
+        result.append(item)
+
+    return result
 
 
 def get_scan_by_id(scan_id):
@@ -147,4 +159,9 @@ def get_scan_by_id(scan_id):
     cursor.execute("SELECT * FROM scans WHERE id = ?", (scan_id,))
     row = cursor.fetchone()
     conn.close()
-    return dict(row) if row else None
+    if not row:
+        return None
+    item = dict(row)
+    item['created_at'] = item.get('timestamp') or item.get('created_at')
+    item['findings_json'] = item.get('findings', '[]')
+    return item
