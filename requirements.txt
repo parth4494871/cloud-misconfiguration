@@ -1,0 +1,14 @@
+# Web framework - runs our web server and handles URL routes
+Flask==3.1.0
+
+# AWS SDK - talks to AWS (or LocalStack) to check for misconfigurations
+boto3==1.35.0
+
+# Password hashing - securely stores passwords (never plain text!)
+bcrypt==4.2.0
+
+# JSON Web Tokens - creates login tokens so users stay logged in
+PyJWT==2.9.0
+
+# PDF generation - builds downloadable security reports
+reportlab==4.2.5

@@ -1,384 +1,246 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
+{% block title %}Dashboard — Cloud Security Scanner{% endblock %}
 
-    <meta charset="UTF-8">
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Cloud Security Detector</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-
-
-<body>
-
-<div class="container">
-
-
-    <!-- HEADER -->
-
-    <header>
-        <button id="themeToggle" onclick="toggleTheme()" class="theme-btn">🌙 Dark Mode</button>
-        <h1>
-            Cloud Security Misconfiguration Detector
-        </h1>
-
-        <p>
-            Local AWS Security Assessment Dashboard
-        </p>
-
-    </header>
-
-
-    <section class="scan-section">
-        <div class="button-group">
-            <button id="scanButton" onclick="runScan()">
-                🔍 Run New Security Scan
+    <!-- Top Connection & Action Header -->
+    <div class="bg-white rounded-xl shadow p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Cloud Security Scanner</h1>
+            <p class="text-sm text-gray-500">
+                Connected Mode: <span class="font-semibold text-blue-600 uppercase">{{ aws_config.mode }}</span>
+                {% if aws_config.mode == 'localstack' %}
+                <span class="text-xs text-gray-400">({{ aws_config.endpoint_url }})</span>
+                {% else %}
+                <span class="text-xs text-gray-400">({{ aws_config.region }})</span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{{ url_for('connect_aws') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition text-sm">
+                ⚙️ Configure AWS
+            </a>
+            <button id="scan-btn" onclick="startScan()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold transition flex items-center gap-2">
+                <span>🔍</span> <span id="scan-btn-text">Run Security Scan</span>
             </button>
-
-            {% if latest_scan %}
-            <a href="/api/report/{{ latest_scan.id }}" class="report-btn" target="_blank">📄 Download PDF</a>
-            {% endif %}
-            
-            <div>
-                <input type="file" id="pdfUpload" accept=".pdf" style="display: none;" onchange="uploadPDF()">
-                <button class="upload-btn" onclick="document.getElementById('pdfUpload').click()">📁 Upload PDF</button>
-            </div>
         </div>
-        <span id="uploadStatus" style="margin-top: 15px; font-weight: 600; color: #10b981; font-size: 15px;"></span>
-    </section>
+    </div>
 
+    <!-- Scan Results Container (Hidden initially until scan runs) -->
+    <div id="results-container" class="hidden space-y-8">
 
-    <!-- LATEST SCAN -->
+        <!-- Score & Severity Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-    {% if latest_scan %}
-
-    <section class="summary">
-        
-        <div class="chart-container">
-            <canvas id="severityChart"></canvas>
-        </div>
-
-        <!-- SCORE -->
-
-        <div class="score-card">
-
-            <h2>
-                Risk Score
-            </h2>
-
-            <div class="score">
-
-                {{ latest_scan.score }}/100
-
+            <!-- Risk Score Card -->
+            <div class="bg-white rounded-xl shadow p-6 flex flex-col items-center justify-center text-center">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Risk Score & Grade</h3>
+                <div class="flex items-baseline gap-3">
+                    <span id="score-val" class="text-5xl font-extrabold text-gray-800">0</span>
+                    <span class="text-gray-400 text-lg">/100</span>
+                </div>
+                <div id="grade-badge" class="mt-3 text-2xl font-bold px-4 py-1 rounded-full bg-gray-100 text-gray-800">
+                    Grade: -
+                </div>
             </div>
 
-            <div class="grade">
+            <!-- Severity Breakdowns Chart -->
+            <div class="bg-white rounded-xl shadow p-6 flex flex-col items-center">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Findings Distribution</h3>
+                <div class="w-48 h-48">
+                    <canvas id="severityChart"></canvas>
+                </div>
+            </div>
 
-                Grade {{ latest_scan.grade }}
-
+            <!-- Action & Export Card -->
+            <div class="bg-white rounded-xl shadow p-6 flex flex-col justify-center items-center text-center">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Export Results</h3>
+                <p class="text-xs text-gray-500 mb-4">Download comprehensive PDF report with step-by-step remediation commands.</p>
+                <a id="download-pdf-btn" href="#" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-5 rounded-lg shadow transition flex items-center gap-2 text-sm">
+                    📄 Download PDF Report
+                </a>
             </div>
 
         </div>
 
-
-        <!-- TOTAL FINDINGS -->
-
-        <div class="stat-card">
-
-            <h2>
-                Total Findings
-            </h2>
-
-            <div class="stat">
-
-                {{ latest_scan.findings|length }}
-
+        <!-- Detailed Findings Table -->
+        <div class="bg-white rounded-xl shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="font-bold text-gray-800 text-lg">Detailed Findings</h3>
+                <span id="findings-count" class="bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">0 Issues Found</span>
             </div>
 
-        </div>
-
-
-        <!-- CRITICAL -->
-
-        <div class="stat-card critical">
-
-            <h2>
-                Critical
-            </h2>
-
-            <div class="stat">
-
-                {{ latest_scan.findings
-                   |selectattr("severity", "equalto", "CRITICAL")
-                   |list
-                   |length }}
-
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-600">
+                    <thead class="bg-gray-50 text-gray-700 uppercase text-xs">
+                        <tr>
+                            <th class="px-6 py-3">Severity</th>
+                            <th class="px-6 py-3">Service</th>
+                            <th class="px-6 py-3">Issue</th>
+                            <th class="px-6 py-3">Resource</th>
+                            <th class="px-6 py-3">Remediation</th>
+                        </tr>
+                    </thead>
+                    <tbody id="findings-tbody" class="divide-y divide-gray-100">
+                        <!-- Rows dynamically populated -->
+                    </tbody>
+                </table>
             </div>
-
         </div>
 
+    </div>
 
-        <!-- HIGH -->
-
-        <div class="stat-card high">
-
-            <h2>
-                High
-            </h2>
-
-            <div class="stat">
-
-                {{ latest_scan.findings
-                   |selectattr("severity", "equalto", "HIGH")
-                   |list
-                   |length }}
-
-            </div>
-
+    <!-- Scan History Table -->
+    {% if history %}
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+            <h3 class="font-bold text-gray-800 text-lg">Recent Scan History</h3>
         </div>
-
-
-    </section>
-
-
-    <!-- SECURITY FINDINGS -->
-
-    <section class="findings">
-
-        <h2>
-            Security Findings
-        </h2>
-
-
-        {% for finding in latest_scan.findings %}
-
-        <div class="finding">
-
-
-            <div class="finding-header">
-
-                <span class="service">
-
-                    {{ finding.service }}
-
-                </span>
-
-
-                <span class="severity {{ finding.severity|lower }}">
-
-                    {{ finding.severity }}
-
-                </span>
-
-            </div>
-
-
-            <h3>
-
-                {{ finding.issue }}
-
-            </h3>
-
-
-            <p>
-
-                <strong>
-                    Resource:
-                </strong>
-
-                {{ finding.resource }}
-
-            </p>
-
-            {% if finding.impact %}
-            <p style="margin-top: 15px; padding: 12px; background: rgba(239, 68, 68, 0.05); border-left: 3px solid #ef4444; border-radius: 6px;">
-                <strong>
-                    ⚠️ Security Impact:
-                </strong>
-                <br/>
-                {{ finding.impact }}
-            </p>
-            {% endif %}
-
-            <p style="margin-top: 15px;">
-                <strong>
-                    Recommended Fix:
-                </strong>
-                {{ finding.remediation }}
-            </p>
-            
-            <button class="fix-btn" onclick="fixIssue(this)">🛠️ Apply Remediation</button>
-
-        </div>
-
-        {% endfor %}
-
-
-    </section>
-
-
-    {% else %}
-
-
-    <!-- WELCOME -->
-
-    <section class="welcome">
-
-        <h2>
-            Welcome to the Security Scanner
-        </h2>
-
-        <p>
-
-            Click
-            <strong>
-                Run New Security Scan
-            </strong>
-            to analyze your local cloud environment for security misconfigurations.
-
-        </p>
-
-    </section>
-
-
-    {% endif %}
-
-    {% if latest_scan %}
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('severityChart');
-        if (ctx) {
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Critical', 'High', 'Medium', 'Low'],
-                    datasets: [{
-                        data: [
-                            {{ latest_scan.findings|selectattr("severity", "equalto", "CRITICAL")|list|length }},
-                            {{ latest_scan.findings|selectattr("severity", "equalto", "HIGH")|list|length }},
-                            {{ latest_scan.findings|selectattr("severity", "equalto", "MEDIUM")|list|length }},
-                            {{ latest_scan.findings|selectattr("severity", "equalto", "LOW")|list|length }}
-                        ],
-                        backgroundColor: ['#dc2626', '#f59e0b', '#3b82f6', '#10b981'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right', labels: { color: document.body.classList.contains('dark-mode') ? '#fff' : '#333' } }
-                    }
-                }
-            });
-        }
-    });
-    </script>
-    {% endif %}
-
-    <!-- SCAN HISTORY -->
-
-    <section class="history">
-
-        <h2>
-            Scan History
-        </h2>
-
-
-        {% if history %}
-
-        <table>
-
-            <thead>
-
+        <table class="w-full text-left text-sm text-gray-600">
+            <thead class="bg-gray-50 text-gray-700 uppercase text-xs">
                 <tr>
-
-                    <th>
-                        Scan ID
-                    </th>
-
-                    <th>
-                        Risk Score
-                    </th>
-
-                    <th>
-                        Grade
-                    </th>
-
-                    <th>
-                        Findings
-                    </th>
-
-                    <th>
-                        Timestamp
-                    </th>
-
+                    <th class="px-6 py-3">Scan ID</th>
+                    <th class="px-6 py-3">Score</th>
+                    <th class="px-6 py-3">Grade</th>
+                    <th class="px-6 py-3">Date</th>
+                    <th class="px-6 py-3">Actions</th>
                 </tr>
-
             </thead>
-
-
-            <tbody>
-
+            <tbody class="divide-y divide-gray-100">
                 {% for scan in history %}
-
                 <tr>
-
-                    <td>
-                        {{ scan.id }}
+                    <td class="px-6 py-4 font-mono text-xs text-gray-500">#{{ scan.id }}</td>
+                    <td class="px-6 py-4 font-semibold text-gray-800">{{ scan.score }}/100</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2.5 py-0.5 text-xs font-bold rounded-full
+                            {% if scan.grade == 'A' %}bg-emerald-100 text-emerald-800
+                            {% elif scan.grade == 'B' %}bg-blue-100 text-blue-800
+                            {% elif scan.grade == 'C' %}bg-amber-100 text-amber-800
+                            {% elif scan.grade == 'D' %}bg-orange-100 text-orange-800
+                            {% else %}bg-rose-100 text-rose-800{% endif %}">
+                            Grade {{ scan.grade }}
+                        </span>
                     </td>
-
-                    <td>
-                        {{ scan.score }}/100
+                    <td class="px-6 py-4 text-xs text-gray-400">{{ scan.created_at }}</td>
+                    <td class="px-6 py-4">
+                        <a href="{{ url_for('download_report', scan_id=scan.id) }}" class="text-blue-600 hover:text-blue-800 font-medium text-xs">
+                            📄 Download PDF
+                        </a>
                     </td>
-
-                    <td>
-                        {{ scan.grade }}
-                    </td>
-
-                    <td>
-                        {{ scan.findings|length }}
-                    </td>
-
-                    <td>
-                        {{ scan.timestamp }}
-                    </td>
-
                 </tr>
-
                 {% endfor %}
-
             </tbody>
-
         </table>
-
-
-        {% else %}
-
-        <p>
-            No previous scans found.
-        </p>
-
-        {% endif %}
-
-
-    </section>
-
+    </div>
+    {% endif %}
 
 </div>
 
+<!-- JavaScript for Dynamic Scanning & Chart.js -->
+<script>
+let severityChart = null;
 
-<!-- JAVASCRIPT -->
+async function startScan() {
+    const btn = document.getElementById('scan-btn');
+    const btnText = document.getElementById('scan-btn-text');
 
-<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+    btn.disabled = true;
+    btnText.innerText = "Scanning AWS Environment...";
 
+    try {
+        const response = await fetch('/api/scan', { method: 'POST' });
+        const data = await response.json();
 
-</body>
+        if (response.ok) {
+            renderResults(data);
+        } else {
+            alert('Scan failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Scan request failed: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btnText.innerText = "Run Security Scan";
+    }
+}
 
-</html>
+function renderResults(data) {
+    document.getElementById('results-container').classList.remove('hidden');
+    document.getElementById('score-val').innerText = data.score;
+
+    // Set Grade badge & color
+    const gradeBadge = document.getElementById('grade-badge');
+    gradeBadge.innerText = 'Grade: ' + data.grade;
+    gradeBadge.className = 'mt-3 text-2xl font-bold px-4 py-1 rounded-full ';
+
+    if (data.grade === 'A') gradeBadge.classList.add('bg-emerald-100', 'text-emerald-800');
+    else if (data.grade === 'B') gradeBadge.classList.add('bg-blue-100', 'text-blue-800');
+    else if (data.grade === 'C') gradeBadge.classList.add('bg-amber-100', 'text-amber-800');
+    else if (data.grade === 'D') gradeBadge.classList.add('bg-orange-100', 'text-orange-800');
+    else gradeBadge.classList.add('bg-rose-100', 'text-rose-800');
+
+    // PDF Download URL
+    document.getElementById('download-pdf-btn').href = '/report/' + data.scan_id;
+
+    // Severity Counts
+    const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+    const tbody = document.getElementById('findings-tbody');
+    tbody.innerHTML = '';
+
+    data.findings.forEach(f => {
+        counts[f.severity] = (counts[f.severity] || 0) + 1;
+
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50';
+
+        let sevBadgeClass = 'bg-gray-100 text-gray-800';
+        if (f.severity === 'CRITICAL') sevBadgeClass = 'bg-rose-100 text-rose-800 font-bold';
+        else if (f.severity === 'HIGH') sevBadgeClass = 'bg-amber-100 text-amber-800 font-bold';
+        else if (f.severity === 'MEDIUM') sevBadgeClass = 'bg-blue-100 text-blue-800';
+        else if (f.severity === 'LOW') sevBadgeClass = 'bg-emerald-100 text-emerald-800';
+
+        row.innerHTML = `
+            <td class="px-6 py-4"><span class="px-2.5 py-0.5 text-xs rounded-full ${sevBadgeClass}">${f.severity}</span></td>
+            <td class="px-6 py-4 font-semibold text-gray-800">${f.service}</td>
+            <td class="px-6 py-4">${f.issue}</td>
+            <td class="px-6 py-4 font-mono text-xs text-gray-500">${f.resource}</td>
+            <td class="px-6 py-4 text-xs text-emerald-700 font-mono">${f.remediation || 'N/A'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    document.getElementById('findings-count').innerText = `${data.findings.length} Issues Found`;
+
+    // Render Chart.js Doughnut
+    renderChart(counts);
+}
+
+function renderChart(counts) {
+    const ctx = document.getElementById('severityChart').getContext('2d');
+
+    if (severityChart) {
+        severityChart.destroy();
+    }
+
+    severityChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Critical', 'High', 'Medium', 'Low'],
+            datasets: [{
+                data: [counts.CRITICAL, counts.HIGH, counts.MEDIUM, counts.LOW],
+                backgroundColor: ['#DC2626', '#F59E0B', '#3B82F6', '#10B981']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,4 +1,4 @@
-#!C:\Users\PARTH KECHE\OneDrive\Desktop\cloud-security-detector\venv\Scripts\python.exe
+#!C:\Users\SHREYAS MADAKE\cloud-misconfiguration\venv\Scripts\python.exe
 
 import sys
 import json
